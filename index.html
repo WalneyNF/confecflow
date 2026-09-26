@@ -2,212 +2,237 @@
 <html lang="pt-BR">
 <head>
 <meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-<title>ConfecFlow — Controle de Produção</title>
-
-<!-- Tailwind -->
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Financiamento de Veículos</title>
 <script src="https://cdn.tailwindcss.com"></script>
-
-<!-- Chart.js -->
-<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
-
-<!-- PWA -->
-<meta name="theme-color" content="#10b981">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+<meta name="theme-color" content="#059669">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="mobile-web-app-capable" content="yes">
-<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
-<meta name="apple-mobile-web-app-title" content="ConfecFlow">
 <link rel="manifest" href="manifest.json">
-<link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🧵</text></svg>">
-
 <style>
-  * { -webkit-tap-highlight-color: transparent; }
-  html, body { min-height: 100vh; overscroll-behavior-y: contain; }
-  input, select, button, textarea { font-size: 16px !important; } /* evita zoom no iOS */
-  .btn-grande { min-height: 52px; font-size: 17px !important; font-weight: 600; }
-  .card { background: white; border-radius: 16px; padding: 16px; box-shadow: 0 1px 3px rgba(0,0,0,.08); }
-  .toast {
-    position: fixed; top: 16px; left: 50%; transform: translateX(-50%);
-    padding: 12px 24px; border-radius: 12px; color: white; font-weight: 600;
-    z-index: 9999; box-shadow: 0 4px 12px rgba(0,0,0,.2);
-    animation: slideDown .3s ease;
-  }
-  .toast.ok { background: #10b981; }
-  .toast.erro { background: #ef4444; }
-  .toast.info { background: #3b82f6; }
-  @keyframes slideDown { from { top: -50px; opacity: 0; } to { top: 16px; opacity: 1; } }
-  .loading {
-    position: fixed; inset: 0; background: rgba(0,0,0,.5);
-    display: flex; align-items: center; justify-content: center; z-index: 9998;
-  }
-  .spinner {
-    width: 48px; height: 48px; border: 4px solid #fff; border-top-color: transparent;
-    border-radius: 50%; animation: spin 1s linear infinite;
-  }
-  @keyframes spin { to { transform: rotate(360deg); } }
-  .tab-ativa { background: #10b981; color: white; }
-  .tab-inativa { color: #6b7280; }
+  html, body { min-height: 100vh; }
+  body { -webkit-tap-highlight-color: transparent; }
+  input, select, button { font-size: 16px !important; }
   @media print { .no-print { display: none !important; } }
 </style>
 </head>
-<body class="bg-gray-50 text-gray-800">
+<body class="bg-gray-100 text-gray-800 pb-20">
 
-<!-- ============================================ -->
-<!-- TOAST (mensagens flutuantes) -->
-<!-- ============================================ -->
-<div id="toastContainer"></div>
+<div class="max-w-2xl mx-auto p-3">
 
-<!-- ============================================ -->
-<!-- LOADING GLOBAL -->
-<!-- ============================================ -->
-<div id="loading" class="loading hidden">
-  <div class="spinner"></div>
-</div>
-
-<!-- ============================================ -->
-<!-- TELA DE LOGIN -->
-<!-- ============================================ -->
-<div id="telaLogin" class="min-h-screen flex items-center justify-center p-4">
-  <div class="w-full max-w-sm">
-
-    <div class="text-center mb-8">
-      <div class="text-7xl mb-2">🧵</div>
-      <h1 class="text-3xl font-bold text-emerald-600">ConfecFlow</h1>
-      <p class="text-gray-500 text-sm mt-1">Controle de Produção e Premiação</p>
-    </div>
-
-    <div class="card space-y-4">
-      <div>
-        <label class="block text-sm font-medium text-gray-700 mb-1">👤 Login</label>
-        <input id="inputLogin" type="text" autocomplete="username" autocapitalize="none"
-               class="w-full border-2 border-gray-200 p-4 rounded-xl focus:border-emerald-500 outline-none text-lg"
-               placeholder="Digite seu login">
-      </div>
-
-      <div>
-        <label class="block text-sm font-medium text-gray-700 mb-1">🔒 Senha</label>
-        <input id="inputSenha" type="password" autocomplete="current-password"
-               class="w-full border-2 border-gray-200 p-4 rounded-xl focus:border-emerald-500 outline-none text-lg"
-               placeholder="Digite sua senha">
-      </div>
-
-      <button onclick="fazerLogin()" id="btnEntrar"
-              class="btn-grande w-full bg-emerald-600 text-white rounded-xl hover:bg-emerald-700 transition">
-        ENTRAR
-      </button>
-
-      <p id="msgLogin" class="text-center text-sm h-5 text-red-500 font-medium"></p>
-    </div>
-
-    <p class="text-center text-xs text-gray-400 mt-6">
-      Esqueceu a senha? Fale com o dono da sua confecção.
-    </p>
-
-    <div class="text-center text-xs text-gray-400 mt-8">
-      <div>ConfecFlow MVP v1.0</div>
-      <div class="mt-1">© Walney Moreira Klein</div>
-    </div>
-  </div>
-</div>
-
-<!-- ============================================ -->
-<!-- TELA PRINCIPAL (após login) -->
-<!-- ============================================ -->
-<div id="telaApp" class="hidden">
-
-  <!-- HEADER -->
-  <header class="bg-gradient-to-r from-emerald-600 to-teal-600 text-white p-4 shadow-lg sticky top-0 z-20">
-    <div class="max-w-2xl mx-auto flex items-center justify-between">
-      <div class="flex-1 min-w-0">
-        <div class="text-xs opacity-80">Bem-vinda(o)</div>
-        <div id="hdrNome" class="font-bold truncate text-lg"></div>
-        <div id="hdrEmpresa" class="text-xs opacity-80 truncate"></div>
-      </div>
-      <button onclick="sair()" class="bg-white/20 hover:bg-white/30 p-2 rounded-lg text-sm font-semibold ml-2">
-        🚪 Sair
-      </button>
-    </div>
+  <header class="bg-gradient-to-r from-green-600 to-emerald-600 text-white p-5 rounded-xl shadow-lg mb-4">
+    <h1 class="text-2xl font-bold">🚗 Financiamento de Veículo</h1>
+    <p class="text-sm opacity-90">Calcule na hora, na loja</p>
+    <p id="status" class="text-xs mt-2 opacity-80">⏳ Carregando...</p>
   </header>
 
-  <!-- CONTEÚDO -->
-  <main class="max-w-2xl mx-auto p-3 pb-24" id="conteudo"></main>
-
-  <!-- MENU INFERIOR -->
-  <nav id="menuInferior" class="fixed bottom-0 left-0 right-0 bg-white border-t-2 border-gray-200 shadow-2xl z-20 no-print">
-    <div class="max-w-2xl mx-auto flex" id="menuInferiorConteudo"></div>
-  </nav>
-
-</div>
-
-<!-- ============================================ -->
-<!-- MODAL GENÉRICO -->
-<!-- ============================================ -->
-<div id="modal" class="hidden fixed inset-0 bg-black/60 z-30 flex items-center justify-center p-4">
-  <div class="bg-white rounded-2xl w-full max-w-md max-h-[90vh] overflow-y-auto">
-    <div class="bg-emerald-600 text-white p-4 rounded-t-2xl flex justify-between items-center sticky top-0">
-      <h3 id="modalTitulo" class="font-bold text-lg"></h3>
-      <button onclick="fecharModal()" class="text-white text-3xl leading-none w-8 h-8 flex items-center justify-center rounded-full hover:bg-white/20">&times;</button>
-    </div>
-    <div id="modalConteudo" class="p-4"></div>
+  <!-- Tabs -->
+  <div class="flex gap-1 mb-4 bg-white rounded-lg p-1 shadow">
+    <button onclick="mostrarAba('calc')" id="tab-calc"
+            class="flex-1 py-2 rounded font-semibold bg-green-600 text-white text-sm">Calcular</button>
+    <button onclick="mostrarAba('hist')" id="tab-hist"
+            class="flex-1 py-2 rounded font-semibold text-gray-600 text-sm">Histórico</button>
+    <button onclick="mostrarAba('config')" id="tab-config"
+            class="flex-1 py-2 rounded font-semibold text-gray-600 text-sm">Config</button>
   </div>
+
+  <!-- ABA CALCULAR -->
+  <div id="aba-calc" class="space-y-4">
+
+    <div class="bg-white p-4 rounded-xl shadow space-y-3">
+      <h2 class="font-semibold text-lg">💰 Dados</h2>
+
+      <div class="grid grid-cols-2 gap-3 text-sm">
+        <label>Veículo
+          <select id="veiculo" class="w-full border p-2 rounded mt-1"></select>
+        </label>
+        <label>&nbsp;
+          <button onclick="novoVeiculo()"
+                  class="w-full border border-dashed border-gray-400 p-2 rounded mt-1 text-gray-600 hover:bg-gray-50">
+            + Novo veículo
+          </button>
+        </label>
+        <label>Preço (R$)
+          <input id="preco" type="number" step="0.01" value="20000" class="w-full border p-2 rounded mt-1">
+        </label>
+        <label>Entrada (R$)
+          <input id="entrada" type="number" step="0.01" value="4000" class="w-full border p-2 rounded mt-1">
+        </label>
+        <label>Troca (R$)
+          <input id="troca" type="number" step="0.01" value="0" class="w-full border p-2 rounded mt-1">
+        </label>
+        <label>Taxa mensal (%)
+          <input id="taxa" type="number" step="0.01" value="1.5" class="w-full border p-2 rounded mt-1">
+        </label>
+        <label>Parcelas
+          <input id="parcelas" type="number" value="48" class="w-full border p-2 rounded mt-1">
+        </label>
+        <label>Despesas (R$)
+          <input id="despesas" type="number" step="0.01" value="800" class="w-full border p-2 rounded mt-1">
+        </label>
+      </div>
+
+      <label class="block text-sm">Sistema
+        <select id="sistema" class="w-full border p-2 rounded mt-1">
+          <option value="price">Tabela Price (parcelas fixas)</option>
+          <option value="sac">Tabela SAC (decrescentes)</option>
+        </select>
+      </label>
+
+      <div class="grid grid-cols-2 gap-2 pt-2">
+        <button onclick="calcular()" class="bg-green-600 text-white p-3 rounded-lg font-semibold hover:bg-green-700">
+          Calcular
+        </button>
+        <button onclick="modoInverso()" class="bg-blue-600 text-white p-3 rounded-lg font-semibold hover:bg-blue-700">
+          Quero pagar X
+        </button>
+      </div>
+    </div>
+
+    <!-- Resultado -->
+    <div id="resultado" class="bg-white p-4 rounded-xl shadow space-y-3 hidden">
+      <h2 class="font-semibold text-lg">📊 Resultado</h2>
+
+      <div class="grid grid-cols-2 gap-2 text-sm">
+        <div class="bg-blue-50 p-3 rounded">
+          <div class="text-xs text-blue-700">Valor financiado</div>
+          <div id="rFinanciado" class="text-lg font-bold text-blue-900">—</div>
+        </div>
+        <div class="bg-green-50 p-3 rounded">
+          <div class="text-xs text-green-700">Parcela</div>
+          <div id="rParcela" class="text-lg font-bold text-green-900">—</div>
+        </div>
+        <div class="bg-purple-50 p-3 rounded">
+          <div class="text-xs text-purple-700">Total pago</div>
+          <div id="rTotal" class="text-lg font-bold text-purple-900">—</div>
+        </div>
+        <div class="bg-red-50 p-3 rounded">
+          <div class="text-xs text-red-700">Juros totais</div>
+          <div id="rJuros" class="text-lg font-bold text-red-900">—</div>
+        </div>
+        <div class="bg-orange-50 p-3 rounded">
+          <div class="text-xs text-orange-700">Despesas</div>
+          <div id="rDespesas" class="text-lg font-bold text-orange-900">—</div>
+        </div>
+        <div class="bg-yellow-50 p-3 rounded">
+          <div class="text-xs text-yellow-700">CET</div>
+          <div id="rCET" class="text-lg font-bold text-yellow-900">—</div>
+        </div>
+      </div>
+
+      <div class="bg-gray-50 p-3 rounded text-sm">
+        <div class="text-xs text-gray-600">Custo final do veículo</div>
+        <div id="rCustoFinal" class="text-xl font-bold text-gray-900">—</div>
+      </div>
+
+      <div class="grid grid-cols-2 gap-2">
+        <button onclick="salvarSimulacao()" class="bg-blue-600 text-white p-3 rounded-lg font-semibold hover:bg-blue-700">
+          💾 Salvar
+        </button>
+        <button onclick="gerarPDF()" class="bg-red-600 text-white p-3 rounded-lg font-semibold hover:bg-red-700">
+          📄 PDF
+        </button>
+      </div>
+
+      <button onclick="compartilhar()" class="w-full bg-emerald-600 text-white p-3 rounded-lg font-semibold hover:bg-emerald-700">
+        📱 Compartilhar no WhatsApp
+      </button>
+    </div>
+
+    <!-- Comparador -->
+    <div class="bg-white p-4 rounded-xl shadow space-y-2">
+      <h2 class="font-semibold text-lg">⚖️ Comparar prazos</h2>
+      <p class="text-xs text-gray-500">Veja parcelas em diferentes prazos</p>
+      <div id="comparador" class="space-y-2 text-sm"></div>
+    </div>
+
+  </div>
+
+  <!-- ABA HISTÓRICO -->
+  <div id="aba-hist" class="hidden space-y-3">
+    <div class="flex justify-between items-center">
+      <h2 class="font-semibold text-lg">📋 Histórico</h2>
+      <button onclick="carregarSimulacoes()" class="text-xs bg-blue-500 text-white px-3 py-1 rounded">🔄 Atualizar</button>
+    </div>
+    <div id="historico" class="space-y-2"></div>
+  </div>
+
+  <!-- ABA CONFIG -->
+  <div id="aba-config" class="hidden space-y-3">
+    <div class="bg-white p-4 rounded-xl shadow space-y-3">
+      <h2 class="font-semibold text-lg">⚙️ Configurações Padrão</h2>
+      <div class="grid grid-cols-2 gap-3 text-sm">
+        <label>Taxa padrão (%)
+          <input id="cfgTaxa" type="number" step="0.01" class="w-full border p-2 rounded mt-1">
+        </label>
+        <label>Cadastro (R$)
+          <input id="cfgCadastro" type="number" step="0.01" class="w-full border p-2 rounded mt-1">
+        </label>
+        <label>Prazo padrão
+          <input id="cfgPrazo" type="number" class="w-full border p-2 rounded mt-1">
+        </label>
+      </div>
+      <button onclick="salvarConfig()" class="w-full bg-green-600 text-white p-3 rounded-lg font-semibold hover:bg-green-700">
+        Salvar configurações
+      </button>
+      <p class="text-xs text-gray-500">Esses valores ficam salvos na sua planilha e sincronizam entre dispositivos.</p>
+    </div>
+
+    <div class="bg-white p-4 rounded-xl shadow space-y-3">
+      <h2 class="font-semibold text-lg">🚗 Veículos Cadastrados</h2>
+      <div id="listaVeiculos" class="text-sm space-y-1"></div>
+    </div>
+  </div>
+
 </div>
 
-<!-- ============================================ -->
-<!-- SCRIPT — PARTE 2 VAI AQUI -->
-<!-- ============================================ -->
- <script>
-// ============================================
-// CONFIGURAÇÃO — COLE SUA URL /EXEC AQUI
-// ============================================
-const API_URL = 'https://script.google.com/macros/s/AKfycbwoU8stdOwehnnIrJGVJeLnNaTGjGNwN7yRX6mBcxw-EXm_vzBqZvoRgPwiR91hxRRhRg/exec';
+<script>
+// ==========================================
+// CONFIGURAÇÃO — COLE AQUI SUA URL /EXEC
+// ==========================================
+const API_URL = 'https://script.google.com/macros/s/AKfycbyv5fBaDtaGhx_nVsEuRXf5lTJl0hbkQSkrrVXjFxz6Sxv2GLTxNF0jaGbPM9y-DH-jNQ/exec';
 
-// ============================================
-// ESTADO GLOBAL
-// ============================================
-let usuarioLogado = null;
-let empresaConfig = null;
-let mesSelecionado = mesAtual();
-let charts = {};
+// ==========================================
+// ESTADO
+// ==========================================
+let simulacoes = [];
+let veiculos = [];
+let config = { TaxaPadrao: 1.5, TaxaCadastro: 800, PrazoPadrao: 48 };
+let ultimoResultado = null;
 
-// ============================================
-// HELPERS
-// ============================================
-const $ = id => document.getElementById(id);
 const fmt = v => Number(v || 0).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
-const fmtData = d => {
-  if (!d) return '';
-  if (d instanceof Date) return d.toLocaleDateString('pt-BR');
-  const s = String(d).slice(0,10);
-  if (s.includes('-')) {
-    const [y, m, day] = s.split('-');
-    return `${day}/${m}/${y}`;
-  }
-  return s;
-};
-const hoje = () => new Date().toISOString().slice(0,10);
-const mesAtual = () => {
-  const d = new Date();
-  return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}`;
-};
 
-function toast(msg, tipo = 'ok', duracao = 2500) {
-  const div = document.createElement('div');
-  div.className = 'toast ' + tipo;
-  div.textContent = msg;
-  $('toastContainer').appendChild(div);
-  setTimeout(() => div.remove(), duracao);
+function setStatus(msg, cor = 'opacity-80') {
+  const el = document.getElementById('status');
+  el.className = 'text-xs mt-2 ' + cor;
+  el.textContent = msg;
 }
 
-function mostrarLoading(mostrar = true) {
-  $('loading').classList.toggle('hidden', !mostrar);
+// ==========================================
+// ABAS
+// ==========================================
+function mostrarAba(aba) {
+  ['calc', 'hist', 'config'].forEach(a => {
+    document.getElementById('aba-' + a).classList.toggle('hidden', a !== aba);
+    const tab = document.getElementById('tab-' + a);
+    if (a === aba) {
+      tab.className = 'flex-1 py-2 rounded font-semibold bg-green-600 text-white text-sm';
+    } else {
+      tab.className = 'flex-1 py-2 rounded font-semibold text-gray-600 text-sm';
+    }
+  });
+
+  if (aba === 'hist') carregarSimulacoes();
+  if (aba === 'config') carregarConfig();
 }
 
-// ============================================
-// API
-// ============================================
-async function apiGet(action, params = {}) {
-  const qs = new URLSearchParams({ action, ...params, t: Date.now() });
-  const r = await fetch(API_URL + '?' + qs, { redirect: 'follow' });
+// ==========================================
+// FETCH COM GET
+// ==========================================
+async function apiGet(action) {
+  const url = API_URL + '?action=' + action + '&t=' + Date.now();
+  const r = await fetch(url, { method: 'GET', redirect: 'follow' });
   const texto = await r.text();
   return JSON.parse(texto);
 }
@@ -218,1332 +243,352 @@ async function apiPost(params) {
   return fetch(API_URL, { method: 'POST', body: fd, mode: 'no-cors' });
 }
 
-// ============================================
-// SESSÃO
-// ============================================
-function salvarSessao(usuario, token) {
-  localStorage.setItem('confecflow_user', JSON.stringify(usuario));
-  localStorage.setItem('confecflow_token', token);
+// ==========================================
+// CÁLCULOS
+// ==========================================
+function calcular() {
+  const preco    = parseFloat(document.getElementById('preco').value) || 0;
+  const entrada  = parseFloat(document.getElementById('entrada').value) || 0;
+  const troca    = parseFloat(document.getElementById('troca').value) || 0;
+  const taxa     = (parseFloat(document.getElementById('taxa').value) || 0) / 100;
+  const n        = parseInt(document.getElementById('parcelas').value) || 0;
+  const despesas = parseFloat(document.getElementById('despesas').value) || 0;
+  const sistema  = document.getElementById('sistema').value;
+  const veiculo  = document.getElementById('veiculo').value;
+
+  if (!preco || !n) return alert('Preencha preço e número de parcelas');
+
+  const financiado = preco - entrada - troca;
+  if (financiado <= 0) return alert('Entrada + troca cobrem o veículo');
+
+  const { parcela, total } = calcularParcela(financiado, taxa, n, sistema);
+  const juros = total - financiado;
+  const totalComDespesas = total + despesas;
+  const cet = totalComDespesas / financiado;
+  const custoFinal = entrada + troca + totalComDespesas;
+
+  document.getElementById('rFinanciado').textContent = fmt(financiado);
+  document.getElementById('rParcela').textContent    = fmt(parcela) + (sistema === 'sac' ? '*' : '');
+  document.getElementById('rTotal').textContent      = fmt(total);
+  document.getElementById('rJuros').textContent      = fmt(juros);
+  document.getElementById('rDespesas').textContent   = fmt(despesas);
+  document.getElementById('rCET').textContent        = cet.toFixed(4) + 'x';
+  document.getElementById('rCustoFinal').textContent = fmt(custoFinal);
+  document.getElementById('resultado').classList.remove('hidden');
+
+  ultimoResultado = {
+    veiculo, preco, entrada, troca, financiado, taxa: taxa*100, parcelas: n,
+    sistema, parcela, total, juros, despesas, cet, custoFinal
+  };
+
+  // Comparador
+  renderComparador(financiado, taxa, despesas);
+
+  // Scroll para resultado
+  document.getElementById('resultado').scrollIntoView({ behavior: 'smooth' });
 }
 
-function carregarSessao() {
-  const user = localStorage.getItem('confecflow_user');
-  if (user) {
-    try {
-      usuarioLogado = JSON.parse(user);
-      return true;
-    } catch (e) {
-      return false;
+function calcularParcela(financiado, taxa, n, sistema) {
+  let parcela, total;
+  if (sistema === 'price') {
+    if (taxa === 0) {
+      parcela = financiado / n;
+    } else {
+      const fator = Math.pow(1 + taxa, n);
+      parcela = financiado * (taxa * fator) / (fator - 1);
     }
+    total = parcela * n;
+  } else {
+    // SAC - primeira parcela
+    const amort = financiado / n;
+    parcela = amort + (financiado * taxa);
+    let jurosTotal = 0, saldo = financiado;
+    for (let i = 0; i < n; i++) {
+      jurosTotal += saldo * taxa;
+      saldo -= amort;
+    }
+    total = financiado + jurosTotal;
   }
-  return false;
+  return { parcela, total };
 }
 
-function limparSessao() {
-  localStorage.removeItem('confecflow_user');
-  localStorage.removeItem('confecflow_token');
+function renderComparador(financiado, taxa, despesas) {
+  const prazos = [12, 24, 36, 48, 60, 72];
+  const div = document.getElementById('comparador');
+  div.innerHTML = prazos.map(p => {
+    const { parcela, total } = calcularParcela(financiado, taxa, p, 'price');
+    const totalCom = total + despesas;
+    return `
+      <div class="flex justify-between items-center p-2 rounded ${p === parseInt(document.getElementById('parcelas').value) ? 'bg-green-50 border border-green-300' : 'bg-gray-50'}">
+        <span class="font-semibold">${p}x</span>
+        <span>${fmt(parcela)}<span class="text-xs text-gray-500"> (total: ${fmt(totalCom)})</span></span>
+      </div>
+    `;
+  }).join('');
 }
 
-// ============================================
-// LOGIN
-// ============================================
-async function fazerLogin() {
-  const login = $('inputLogin').value.trim();
-  const senha = $('inputSenha').value;
-  const btn = $('btnEntrar');
-  const msg = $('msgLogin');
+// ==========================================
+// MODO INVERSO: dado a parcela, calcular entrada
+// ==========================================
+function modoInverso() {
+  const desejada = parseFloat(prompt('Quanto quer pagar por mês? (R$)'));
+  if (!desejada || desejada <= 0) return;
 
-  if (!login || !senha) {
-    msg.textContent = '⚠️ Preencha login e senha';
+  const preco   = parseFloat(document.getElementById('preco').value) || 0;
+  const troca   = parseFloat(document.getElementById('troca').value) || 0;
+  const taxa    = (parseFloat(document.getElementById('taxa').value) || 0) / 100;
+  const n       = parseInt(document.getElementById('parcelas').value) || 0;
+  const despesas = parseFloat(document.getElementById('despesas').value) || 0;
+
+  // Ajusta a parcela desejada tirando as despesas rateadas
+  const parcelaAjustada = desejada - (despesas / n);
+
+  // Valor presente da parcela: PV = PMT × ((1+i)^n − 1) / (i × (1+i)^n)
+  let financiadoMax;
+  if (taxa === 0) {
+    financiadoMax = parcelaAjustada * n;
+  } else {
+    const fator = Math.pow(1 + taxa, n);
+    financiadoMax = parcelaAjustada * (fator - 1) / (taxa * fator);
+  }
+
+  const entradaNecessaria = preco - troca - financiadoMax;
+
+  if (entradaNecessaria <= 0) {
+    alert(`Você consegue financiar tudo! Parcela máxima ficaria ${fmt(desejada)} sem entrada.\n\nSobra até ${fmt(-entradaNecessaria)} de troco.`);
+  } else {
+    alert(`Para pagar ${fmt(desejada)}/mês em ${n}x:\n\n💰 Entrada necessária: ${fmt(entradaNecessaria)}\n🚗 Financiado máximo: ${fmt(financiadoMax)}`);
+    document.getElementById('entrada').value = entradaNecessaria.toFixed(2);
+    calcular();
+  }
+}
+
+// ==========================================
+// VEÍCULOS
+// ==========================================
+async function carregarVeiculos() {
+  try {
+    veiculos = await apiGet('veiculos');
+    const sel = document.getElementById('veiculo');
+    sel.innerHTML = '<option value="">-- Selecione --</option>' +
+      veiculos.map(v => `<option value="${v}">${v}</option>`).join('');
+
+    const lista = document.getElementById('listaVeiculos');
+    if (lista) {
+      lista.innerHTML = veiculos.length
+        ? veiculos.map(v => `<div class="p-2 bg-gray-50 rounded">🚗 ${v}</div>`).join('')
+        : '<div class="text-gray-500 text-xs">Nenhum veículo cadastrado</div>';
+    }
+  } catch (e) {
+    console.error('Erro veículos:', e);
+  }
+}
+
+async function novoVeiculo() {
+  const nome = prompt('Modelo do veículo (ex: Honda CG 160):');
+  if (!nome) return;
+
+  setStatus('⏳ Salvando veículo...', 'text-yellow-200 text-xs mt-2');
+  await apiPost({ action: 'veiculo', nome });
+  setTimeout(async () => {
+    await carregarVeiculos();
+    document.getElementById('veiculo').value = nome;
+    setStatus('✅ Veículo cadastrado!', 'text-green-200 text-xs mt-2');
+  }, 1500);
+}
+
+// ==========================================
+// SIMULAÇÕES
+// ==========================================
+async function carregarSimulacoes() {
+  try {
+    simulacoes = await apiGet('simulacoes');
+    renderHistorico();
+  } catch (e) {
+    console.error('Erro simulações:', e);
+    setStatus('❌ Erro ao carregar', 'text-red-200 text-xs mt-2');
+  }
+}
+
+function renderHistorico() {
+  const div = document.getElementById('historico');
+  if (!simulacoes.length) {
+    div.innerHTML = '<div class="bg-white p-4 rounded-xl shadow text-center text-gray-500 text-sm">Nenhuma simulação salva ainda</div>';
     return;
   }
 
-  msg.textContent = '';
-  btn.disabled = true;
-  btn.textContent = 'Entrando...';
-  mostrarLoading(true);
-
-  try {
-    const r = await apiGet('login', { login, senha });
-    mostrarLoading(false);
-
-    if (r.error) {
-      msg.textContent = '❌ ' + r.error;
-      btn.disabled = false;
-      btn.textContent = 'ENTRAR';
-      return;
-    }
-
-    if (r.status === 'ok' && r.usuario) {
-      usuarioLogado = r.usuario;
-      salvarSessao(r.usuario, r.token);
-      toast('✅ Bem-vinda(o), ' + r.usuario.nome.split(' ')[0] + '!', 'ok');
-      setTimeout(() => entrarNoApp(), 400);
-    } else {
-      msg.textContent = '❌ Erro inesperado';
-      btn.disabled = false;
-      btn.textContent = 'ENTRAR';
-    }
-  } catch (erro) {
-    mostrarLoading(false);
-    msg.textContent = '❌ Erro de conexão. Tente novamente.';
-    btn.disabled = false;
-    btn.textContent = 'ENTRAR';
-    console.error(erro);
-  }
+  div.innerHTML = simulacoes.slice().reverse().map(s => {
+    const data = s.Data ? new Date(s.Data).toLocaleDateString('pt-BR') : '';
+    return `
+      <div class="bg-white p-3 rounded-xl shadow text-sm">
+        <div class="flex justify-between items-start">
+          <div class="flex-1">
+            <div class="font-semibold">${s.Veiculo || 'Sem nome'}</div>
+            <div class="text-xs text-gray-500">${data}</div>
+            <div class="grid grid-cols-2 gap-1 mt-2 text-xs">
+              <div>💰 ${fmt(s.Preco)}</div>
+              <div>💵 Entrada: ${fmt(s.Entrada)}</div>
+              <div class="font-semibold text-green-700">${s.Parcelas}x ${fmt(s.Parcela)}</div>
+              <div class="text-red-700">Juros: ${fmt(s.Juros)}</div>
+            </div>
+          </div>
+          <button onclick="deletarSimulacao(${s._linha})" class="text-red-500 text-xs px-2">🗑️</button>
+        </div>
+      </div>
+    `;
+  }).join('');
 }
 
-function sair() {
-  if (!confirm('Deseja sair do ConfecFlow?')) return;
-  limparSessao();
-  usuarioLogado = null;
-  empresaConfig = null;
-  location.reload();
-}
+async function salvarSimulacao() {
+  if (!ultimoResultado) return;
 
-// ============================================
-// ENTRAR NO APP (após login ou sessão salva)
-// ============================================
-async function entrarNoApp() {
-  $('telaLogin').classList.add('hidden');
-  $('telaApp').classList.remove('hidden');
-
-  // Header
-  $('hdrNome').textContent = usuarioLogado.nome;
-
-  // Se não é Super Admin, carrega dados da empresa
-  if (usuarioLogado.perfil !== 'SUPER_ADMIN') {
-    try {
-      const emp = await apiGet('configEmpresa', { id_empresa: usuarioLogado.id_empresa });
-      if (emp.error) {
-        toast('❌ ' + emp.error, 'erro');
-        return;
-      }
-      empresaConfig = emp;
-      $('hdrEmpresa').textContent = emp.nome_confeccao;
-    } catch (e) {
-      toast('❌ Erro ao carregar empresa', 'erro');
-    }
-  } else {
-    $('hdrEmpresa').textContent = '👑 Super Admin';
-  }
-
-  // Monta menu por perfil
-  montarMenu();
-
-  // Abre primeira aba
-  const primeiraAba = usuarioLogado.perfil === 'SUPER_ADMIN' ? 'superEmpresas'
-    : usuarioLogado.perfil === 'DONO' ? 'painelDono'
-    : 'lancar';
-  trocarAba(primeiraAba);
-}
-
-// ============================================
-// MENU POR PERFIL
-// ============================================
-const MENUS = {
-  COSTUREIRA: [
-    { id: 'lancar',      icone: '📝', label: 'Lançar' },
-    { id: 'meusNumeros', icone: '📊', label: 'Meus Números' },
-    { id: 'historico',   icone: '📋', label: 'Histórico' }
-  ],
-  DONO: [
-    { id: 'painelDono',    icone: '📊', label: 'Painel' },
-    { id: 'costureiras',   icone: '👥', label: 'Costureiras' },
-    { id: 'lancamentos',   icone: '📋', label: 'Lançamentos' },
-    { id: 'configEmpresa', icone: '⚙️', label: 'Config' }
-  ],
-  SUPER_ADMIN: [
-    { id: 'superEmpresas', icone: '🏢', label: 'Confecções' },
-    { id: 'superPainel',   icone: '📊', label: 'Painel' }
-  ]
-};
-
-let abaAtiva = null;
-
-function montarMenu() {
-  const menu = MENUS[usuarioLogado.perfil] || [];
-  const el = $('menuInferiorConteudo');
-
-  el.innerHTML = menu.map(item => `
-    <button onclick="trocarAba('${item.id}')" data-aba="${item.id}"
-            class="flex-1 flex flex-col items-center py-2 ${menu.length > 3 ? 'text-xs' : 'text-sm'} tab-inativa">
-      <span class="text-2xl">${item.icone}</span>
-      <span class="font-medium mt-0.5">${item.label}</span>
-    </button>
-  `).join('');
-}
-
-function trocarAba(aba) {
-  abaAtiva = aba;
-
-  // Atualiza visual do menu
-  document.querySelectorAll('[data-aba]').forEach(btn => {
-    const ativo = btn.dataset.aba === aba;
-    btn.className = btn.className
-      .replace('tab-ativa', '')
-      .replace('tab-inativa', '')
-      .trim() + ' ' + (ativo ? 'tab-ativa' : 'tab-inativa');
+  setStatus('⏳ Salvando...', 'text-yellow-200 text-xs mt-2');
+  await apiPost({
+    action: 'simulacao',
+    veiculo: ultimoResultado.veiculo,
+    preco: ultimoResultado.preco,
+    entrada: ultimoResultado.entrada,
+    troca: ultimoResultado.troca,
+    financiado: ultimoResultado.financiado,
+    taxa: ultimoResultado.taxa,
+    parcelas: ultimoResultado.parcelas,
+    sistema: ultimoResultado.sistema,
+    parcela: ultimoResultado.parcela,
+    total: ultimoResultado.total,
+    juros: ultimoResultado.juros,
+    despesas: ultimoResultado.despesas,
+    cet: ultimoResultado.cet
   });
 
-  // Renderiza o conteúdo
-  const conteudo = $('conteudo');
-  conteudo.innerHTML = '<div class="text-center py-12 text-gray-400"><div class="spinner" style="border-color:#10b981;border-top-color:transparent;margin:0 auto"></div><p class="mt-3 text-sm">Carregando...</p></div>';
-
-  // Chama a função da aba
-  const fn = window['render_' + aba];
-  if (typeof fn === 'function') {
-    fn();
-  } else {
-    conteudo.innerHTML = '<div class="card text-center text-gray-500">🚧 Em construção</div>';
-  }
+  setTimeout(async () => {
+    await carregarSimulacoes();
+    setStatus('✅ Simulação salva!', 'text-green-200 text-xs mt-2');
+  }, 1500);
 }
 
-// ============================================
-// MODAL
-// ============================================
-function abrirModal(titulo, conteudoHtml) {
-  $('modalTitulo').textContent = titulo;
-  $('modalConteudo').innerHTML = conteudoHtml;
-  $('modal').classList.remove('hidden');
+async function deletarSimulacao(linha) {
+  if (!confirm('Deletar essa simulação?')) return;
+  await apiPost({ action: 'deletar', linha });
+  setTimeout(carregarSimulacoes, 1500);
 }
 
-function fecharModal() {
-  $('modal').classList.add('hidden');
-}
-
-// ============================================
-// ENTER NO LOGIN
-// ============================================
-document.addEventListener('DOMContentLoaded', () => {
-  $('inputSenha').addEventListener('keypress', e => {
-    if (e.key === 'Enter') fazerLogin();
-  });
-  $('inputLogin').addEventListener('keypress', e => {
-    if (e.key === 'Enter') $('inputSenha').focus();
-  });
-
-  // Auto-login se tiver sessão salva
-  if (carregarSessao()) {
-    entrarNoApp();
-  }
-});
-
-// ============================================
-// FECHAR MODAL CLICANDO FORA
-// ============================================
-$('modal').addEventListener('click', e => {
-  if (e.target.id === 'modal') fecharModal();
-});
-</script>
-
-<script>
-// ============================================
-// ABA: LANÇAR (Costureira)
-// ============================================
-function render_lancar() {
-  const hoje_ = hoje();
-  $('conteudo').innerHTML = `
-    <div class="space-y-4">
-      <div class="card">
-        <h2 class="text-xl font-bold text-emerald-700 mb-4">📝 Lançar Produção</h2>
-
-        <div class="space-y-4">
-          <div>
-            <label class="block text-sm font-medium text-gray-700 mb-1">📅 Data</label>
-            <input id="lancData" type="date" value="${hoje_}"
-                   class="w-full border-2 border-gray-200 p-4 rounded-xl focus:border-emerald-500 outline-none text-lg">
-          </div>
-
-          <div>
-            <label class="block text-sm font-medium text-gray-700 mb-1">⏱️ Minutos produzidos</label>
-            <input id="lancMinutos" type="number" inputmode="numeric" min="0" max="2000"
-                   class="w-full border-2 border-gray-200 p-4 rounded-xl focus:border-emerald-500 outline-none text-4xl font-bold text-center text-emerald-700"
-                   placeholder="000">
-            <p class="text-xs text-gray-500 mt-1 text-center">
-              Padrão da confecção: <span class="font-bold">${empresaConfig?.minutos_padrao || 555}</span> minutos/dia
-            </p>
-          </div>
-
-          <button onclick="salvarLancamento()" id="btnSalvarLanc"
-                  class="btn-grande w-full bg-emerald-600 text-white rounded-xl hover:bg-emerald-700 transition">
-            ✅ SALVAR PRODUÇÃO
-          </button>
-        </div>
-      </div>
-
-      <div class="card">
-        <h3 class="font-semibold text-gray-700 mb-3">📅 Últimos lançamentos</h3>
-        <div id="ultimosLancamentos" class="text-sm space-y-2">
-          <div class="text-center text-gray-400 py-4">Carregando...</div>
-        </div>
-      </div>
-    </div>
-  `;
-
-  // Foco automático no campo de minutos
-  setTimeout(() => $('lancMinutos').focus(), 100);
-
-  // Carrega últimos lançamentos
-  carregarUltimosLancamentos();
-}
-
-async function carregarUltimosLancamentos() {
+// ==========================================
+// CONFIG
+// ==========================================
+async function carregarConfig() {
   try {
-    const registros = await apiGet('listarRegistros', { id_usuario: usuarioLogado.id_usuario });
-    const ultimos = registros.slice().sort((a,b) => b.data.localeCompare(a.data)).slice(0, 5);
-
-    const el = $('ultimosLancamentos');
-    if (!ultimos.length) {
-      el.innerHTML = '<div class="text-center text-gray-400 py-4">Nenhum lançamento ainda</div>';
-      return;
-    }
-
-    el.innerHTML = ultimos.map(r => `
-      <div class="flex justify-between items-center bg-gray-50 p-3 rounded-lg">
-        <span class="font-medium">${fmtData(r.data)}</span>
-        <span class="font-bold text-emerald-700">${r.minutos} min</span>
-      </div>
-    `).join('');
-  } catch (e) {
-    console.error(e);
-  }
-}
-
-async function salvarLancamento() {
-  const data = $('lancData').value;
-  const minutos = parseInt($('lancMinutos').value);
-
-  if (!data) { toast('⚠️ Informe a data', 'erro'); return; }
-  if (!minutos || minutos <= 0) { toast('⚠️ Informe os minutos', 'erro'); return; }
-  if (minutos > 2000) { toast('⚠️ Valor muito alto', 'erro'); return; }
-
-  const btn = $('btnSalvarLanc');
-  btn.disabled = true;
-  btn.textContent = 'Salvando...';
-  mostrarLoading(true);
-
-  try {
-    await apiPost({
-      action: 'salvarRegistro',
-      id_usuario: usuarioLogado.id_usuario,
-      id_empresa: usuarioLogado.id_empresa,
-      data: data,
-      minutos: minutos
-    });
-
-    // Aguarda o Sheets processar
-    setTimeout(async () => {
-      mostrarLoading(false);
-      toast('✅ Produção salva: ' + minutos + ' min', 'ok');
-      $('lancMinutos').value = '';
-      $('lancMinutos').focus();
-      await carregarUltimosLancamentos();
-      btn.disabled = false;
-      btn.textContent = '✅ SALVAR PRODUÇÃO';
-    }, 1500);
-
-  } catch (erro) {
-    mostrarLoading(false);
-    toast('❌ Erro ao salvar', 'erro');
-    btn.disabled = false;
-    btn.textContent = '✅ SALVAR PRODUÇÃO';
-    console.error(erro);
-  }
-}
-
-// ============================================
-// ABA: MEUS NÚMEROS (Costureira)
-// ============================================
-async function render_meusNumeros() {
-  try {
-    const dados = await apiGet('meusNumeros', {
-      id_usuario: usuarioLogado.id_usuario,
-      mes: mesSelecionado
-    });
-
-    if (dados.error) {
-      $('conteudo').innerHTML = '<div class="card text-red-600">❌ ' + dados.error + '</div>';
-      return;
-    }
-
-    const eficiencia = dados.eficiencia || 0;
-    const corEficiencia = eficiencia >= (empresaConfig?.meta_piso || 70) ? 'text-emerald-600' : 'text-gray-500';
-    const emoji = eficiencia >= (empresaConfig?.meta_piso || 70) ? '🏆' : '💪';
-
-    $('conteudo').innerHTML = `
-      <div class="space-y-4">
-        <div class="card">
-          <div class="flex justify-between items-center mb-3">
-            <h2 class="text-xl font-bold text-emerald-700">📊 Meus Números</h2>
-            <input type="month" id="mesPicker" value="${mesSelecionado}"
-                   onchange="mudarMes(this.value)"
-                   class="border p-2 rounded-lg text-sm">
-          </div>
-
-          <div class="grid grid-cols-2 gap-3 mb-4">
-            <div class="bg-emerald-50 p-4 rounded-xl text-center">
-              <div class="text-xs text-emerald-700 font-medium">💰 Salário Base</div>
-              <div class="text-lg font-bold text-emerald-900 mt-1">${fmt(dados.salario_base)}</div>
-            </div>
-            <div class="bg-purple-50 p-4 rounded-xl text-center">
-              <div class="text-xs text-purple-700 font-medium">🎁 Prêmio</div>
-              <div class="text-lg font-bold text-purple-900 mt-1">${fmt(dados.premio)}</div>
-            </div>
-          </div>
-
-          <div class="bg-gradient-to-r from-emerald-600 to-teal-600 text-white p-4 rounded-xl text-center mb-4">
-            <div class="text-xs opacity-90">Total a Receber no Mês</div>
-            <div class="text-3xl font-bold mt-1">${fmt(dados.total_receber)}</div>
-          </div>
-
-          <div class="grid grid-cols-2 gap-3">
-            <div class="bg-gray-50 p-3 rounded-xl text-center">
-              <div class="text-xs text-gray-500">Minutos no mês</div>
-              <div class="text-xl font-bold">${dados.total_minutos}</div>
-            </div>
-            <div class="bg-gray-50 p-3 rounded-xl text-center">
-              <div class="text-xs text-gray-500">Dias registrados</div>
-              <div class="text-xl font-bold">${dados.dias_registrados}</div>
-            </div>
-          </div>
-
-          <div class="mt-4 text-center">
-            <div class="text-xs text-gray-500 mb-1">Eficiência do mês</div>
-            <div class="text-5xl font-bold ${corEficiencia}">${eficiencia.toFixed(1)}%</div>
-            <div class="text-xs text-gray-500 mt-1">
-              ${emoji} Meta: ${empresaConfig?.meta_piso || 70}%
-            </div>
-          </div>
-        </div>
-
-        <div class="card">
-          <h3 class="font-semibold mb-3">📈 Evolução Diária</h3>
-          <canvas id="graficoEvolucao" height="180"></canvas>
-        </div>
-
-        <div class="card">
-          <h3 class="font-semibold mb-3">📋 Registros do mês</h3>
-          <div id="listaRegistrosMes" class="space-y-2"></div>
-        </div>
-      </div>
-    `;
-
-    // Gráfico
-    setTimeout(() => desenharGraficoEvolucao(dados.registros || []), 100);
-
-    // Lista
-    const lista = $('listaRegistrosMes');
-    if (!dados.registros || !dados.registros.length) {
-      lista.innerHTML = '<div class="text-center text-gray-400 py-4">Nenhum registro no mês</div>';
-    } else {
-      lista.innerHTML = dados.registros
-        .slice()
-        .sort((a,b) => a.data.localeCompare(b.data))
-        .map(r => `
-          <div class="flex justify-between items-center bg-gray-50 p-3 rounded-lg">
-            <span class="font-medium">${fmtData(r.data)}</span>
-            <div class="flex items-center gap-2">
-              <span class="font-bold text-emerald-700">${r.minutos} min</span>
-              <button onclick="confirmarExcluir(${r.id_registro})"
-                      class="text-red-500 hover:text-red-700 px-2">🗑️</button>
-            </div>
-          </div>
-        `).join('');
-    }
-
-  } catch (e) {
-    console.error(e);
-    $('conteudo').innerHTML = '<div class="card text-red-600">❌ Erro ao carregar</div>';
-  }
-}
-
-function mudarMes(mes) {
-  mesSelecionado = mes;
-  trocarAba('meusNumeros');
-}
-
-function desenharGraficoEvolucao(registros) {
-  const canvas = $('graficoEvolucao');
-  if (!canvas) return;
-
-  if (charts.evolucao) charts.evolucao.destroy();
-
-  const labels = registros.map(r => fmtData(r.data));
-  const data = registros.map(r => r.minutos);
-  const meta = empresaConfig?.minutos_padrao || 555;
-
-  charts.evolucao = new Chart(canvas, {
-    type: 'bar',
-    data: {
-      labels: labels.length ? labels : ['Sem dados'],
-      datasets: [
-        {
-          label: 'Minutos',
-          data: data.length ? data : [0],
-          backgroundColor: data.map(v => v >= meta ? '#10b981' : '#f59e0b'),
-          borderRadius: 6
-        },
-        {
-          label: 'Meta',
-          data: labels.map(() => meta),
-          type: 'line',
-          borderColor: '#ef4444',
-          borderDash: [5, 5],
-          pointRadius: 0
-        }
-      ]
-    },
-    options: {
-      responsive: true,
-      plugins: {
-        legend: { display: true, position: 'bottom' }
-      },
-      scales: {
-        y: { beginAtZero: true }
-      }
-    }
-  });
-}
-
-async function confirmarExcluir(id) {
-  if (!confirm('Excluir este lançamento?')) return;
-  try {
-    await apiPost({ action: 'deletarRegistro', id_registro: id });
-    setTimeout(() => {
-      toast('🗑️ Excluído', 'ok');
-      trocarAba('meusNumeros');
-    }, 1500);
-  } catch (e) {
-    toast('❌ Erro ao excluir', 'erro');
-  }
-}
-
-// ============================================
-// ABA: HISTÓRICO (Costureira)
-// ============================================
-async function render_historico() {
-  try {
-    const registros = await apiGet('listarRegistros', { id_usuario: usuarioLogado.id_usuario });
-    const ordenados = registros.slice().sort((a,b) => b.data.localeCompare(a.data));
-
-    // Agrupa por mês
-    const porMes = {};
-    ordenados.forEach(r => {
-      const mes = r.data.slice(0,7);
-      if (!porMes[mes]) porMes[mes] = [];
-      porMes[mes].push(r);
-    });
-
-    const meses = Object.keys(porMes).sort().reverse();
-
-    $('conteudo').innerHTML = `
-      <div class="space-y-4">
-        <div class="card">
-          <h2 class="text-xl font-bold text-emerald-700 mb-3">📋 Meu Histórico</h2>
-          <p class="text-sm text-gray-500">Total: ${registros.length} lançamentos</p>
-        </div>
-
-        ${meses.length ? meses.map(mes => {
-          const regs = porMes[mes];
-          const total = regs.reduce((s,r) => s + r.minutos, 0);
-          const [y, m] = mes.split('-');
-          const nomeMes = new Date(y, m-1, 1).toLocaleDateString('pt-BR', { month: 'long', year: 'numeric' });
-          return `
-            <div class="card">
-              <div class="flex justify-between items-center mb-3">
-                <h3 class="font-bold text-gray-700 capitalize">${nomeMes}</h3>
-                <span class="bg-emerald-100 text-emerald-700 px-3 py-1 rounded-full text-sm font-bold">${total} min</span>
-              </div>
-              <div class="space-y-1 text-sm">
-                ${regs.map(r => `
-                  <div class="flex justify-between py-1 border-b border-gray-100 last:border-0">
-                    <span>${fmtData(r.data)}</span>
-                    <span class="font-medium">${r.minutos} min</span>
-                  </div>
-                `).join('')}
-              </div>
-            </div>
-          `;
-        }).join('') : '<div class="card text-center text-gray-400 py-8">Nenhum lançamento ainda</div>'}
-      </div>
-    `;
-  } catch (e) {
-    console.error(e);
-    $('conteudo').innerHTML = '<div class="card text-red-600">❌ Erro ao carregar</div>';
-  }
-}
-
-// ============================================
-// ABA: PAINEL DONO
-// ============================================
-async function render_painelDono() {
-  try {
-    const dados = await apiGet('painelDono', {
-      id_empresa: usuarioLogado.id_empresa,
-      mes: mesSelecionado
-    });
-
-    if (dados.error) {
-      $('conteudo').innerHTML = '<div class="card text-red-600">❌ ' + dados.error + '</div>';
-      return;
-    }
-
-    $('conteudo').innerHTML = `
-      <div class="space-y-4">
-        <div class="card">
-          <div class="flex justify-between items-center mb-4">
-            <h2 class="text-xl font-bold text-emerald-700">📊 Painel</h2>
-            <input type="month" value="${mesSelecionado}"
-                   onchange="mudarMes(this.value)"
-                   class="border p-2 rounded-lg text-sm">
-          </div>
-
-          <div class="grid grid-cols-3 gap-2 mb-4">
-            <div class="bg-emerald-50 p-3 rounded-xl text-center">
-              <div class="text-xs text-emerald-700">Produção</div>
-              <div class="text-lg font-bold text-emerald-900">${dados.total_producao}</div>
-              <div class="text-xs text-emerald-600">min</div>
-            </div>
-            <div class="bg-purple-50 p-3 rounded-xl text-center">
-              <div class="text-xs text-purple-700">Prêmios</div>
-              <div class="text-lg font-bold text-purple-900">${fmt(dados.total_premios)}</div>
-            </div>
-            <div class="bg-blue-50 p-3 rounded-xl text-center">
-              <div class="text-xs text-blue-700">Folha</div>
-              <div class="text-lg font-bold text-blue-900">${fmt(dados.total_folha)}</div>
-            </div>
-          </div>
-
-          <div class="bg-gray-50 p-3 rounded-xl text-xs">
-            <div class="flex justify-between mb-1">
-              <span class="text-gray-500">Costureiras:</span>
-              <span class="font-bold">${dados.ranking.length}</span>
-            </div>
-            <div class="flex justify-between mb-1">
-              <span class="text-gray-500">Regras:</span>
-              <span class="font-bold">${dados.empresa.minutos_padrao}min · meta ${dados.empresa.meta_piso}%</span>
-            </div>
-            <div class="flex justify-between">
-              <span class="text-gray-500">Prêmio base:</span>
-              <span class="font-bold">${fmt(dados.empresa.valor_premio_base)} + ${fmt(dados.empresa.valor_por_extra)}/%</span>
-            </div>
-          </div>
-        </div>
-
-        <div class="card">
-          <h3 class="font-semibold text-gray-700 mb-3">🏆 Ranking do Mês</h3>
-          <div class="space-y-2">
-            ${dados.ranking.length ? dados.ranking.map((c, i) => {
-              const medalha = i === 0 ? '🥇' : i === 1 ? '🥈' : i === 2 ? '🥉' : `${i+1}º`;
-              const bateu = c.eficiencia >= dados.empresa.meta_piso;
-              return `
-                <div class="flex items-center gap-3 p-3 rounded-lg ${bateu ? 'bg-emerald-50' : 'bg-gray-50'}">
-                  <div class="text-2xl w-8 text-center">${medalha}</div>
-                  <div class="flex-1 min-w-0">
-                    <div class="font-semibold truncate">${c.nome}</div>
-                    <div class="text-xs text-gray-500">${c.total_minutos} min · ${c.eficiencia.toFixed(1)}%</div>
-                  </div>
-                  <div class="text-right">
-                    <div class="font-bold ${bateu ? 'text-emerald-700' : 'text-gray-400'}">${fmt(c.premio)}</div>
-                    <div class="text-xs text-gray-500">${bateu ? '🎁' : ''}</div>
-                  </div>
-                </div>
-              `;
-            }).join('') : '<div class="text-center text-gray-400 py-4">Nenhuma costureira cadastrada</div>'}
-          </div>
-        </div>
-
-        <div class="card">
-          <h3 class="font-semibold mb-3">📈 Produção por Costureira</h3>
-          <canvas id="graficoPainel" height="180"></canvas>
-        </div>
-      </div>
-    `;
-
-    setTimeout(() => desenharGraficoPainelDono(dados), 100);
-
-  } catch (e) {
-    console.error(e);
-    $('conteudo').innerHTML = '<div class="card text-red-600">❌ Erro ao carregar painel</div>';
-  }
-}
-
-function desenharGraficoPainelDono(dados) {
-  const canvas = $('graficoPainel');
-  if (!canvas) return;
-  if (charts.painel) charts.painel.destroy();
-
-  charts.painel = new Chart(canvas, {
-    type: 'bar',
-    data: {
-      labels: dados.ranking.map(c => c.nome.split(' ')[0]),
-      datasets: [{
-        label: 'Minutos',
-        data: dados.ranking.map(c => c.total_minutos),
-        backgroundColor: dados.ranking.map(c =>
-          c.eficiencia >= dados.empresa.meta_piso ? '#10b981' : '#f59e0b'
-        ),
-        borderRadius: 6
-      }]
-    },
-    options: {
-      responsive: true,
-      plugins: { legend: { display: false } },
-      scales: { y: { beginAtZero: true } }
-    }
-  });
-}
-
-// ============================================
-// ABA: COSTUREIRAS (Dono)
-// ============================================
-async function render_costureiras() {
-  try {
-    const lista = await apiGet('listarCostureiras', { id_empresa: usuarioLogado.id_empresa });
-
-    $('conteudo').innerHTML = `
-      <div class="space-y-4">
-        <div class="card">
-          <div class="flex justify-between items-center mb-3">
-            <h2 class="text-xl font-bold text-emerald-700">👥 Costureiras</h2>
-            <button onclick="abrirFormCostureira()"
-                    class="bg-emerald-600 text-white px-4 py-2 rounded-lg font-semibold hover:bg-emerald-700">
-              + Nova
-            </button>
-          </div>
-          <p class="text-sm text-gray-500 mb-3">Total: ${lista.length} costureira(s)</p>
-
-          <div class="space-y-2">
-            ${lista.length ? lista.map(c => `
-              <div class="flex items-center gap-3 p-3 bg-gray-50 rounded-lg">
-                <div class="w-10 h-10 bg-emerald-600 text-white rounded-full flex items-center justify-center font-bold">
-                  ${c.nome.charAt(0).toUpperCase()}
-                </div>
-                <div class="flex-1 min-w-0">
-                  <div class="font-semibold truncate">${c.nome}</div>
-                  <div class="text-xs text-gray-500">👤 ${c.login} · ${fmt(c.salario_base)}</div>
-                </div>
-                <button onclick='editarCostureira(${JSON.stringify(c).replace(/'/g, "&apos;")})'
-                        class="text-blue-500 px-2">✏️</button>
-                <button onclick="confirmarExcluirCostureira(${c.id_usuario}, '${c.nome.replace(/'/g, "&apos;")}')"
-                        class="text-red-500 px-2">🗑️</button>
-              </div>
-            `).join('') : '<div class="text-center text-gray-400 py-6">Nenhuma costureira cadastrada</div>'}
-          </div>
-        </div>
-      </div>
-    `;
-  } catch (e) {
-    console.error(e);
-    $('conteudo').innerHTML = '<div class="card text-red-600">❌ Erro ao carregar</div>';
-  }
-}
-
-function abrirFormCostureira(c = null) {
-  const editando = !!c;
-  abrirModal(editando ? '✏️ Editar Costureira' : '➕ Nova Costureira', `
-    <div class="space-y-3">
-      <div>
-        <label class="block text-sm font-medium mb-1">Nome completo *</label>
-        <input id="fNome" type="text" value="${c?.nome || ''}"
-               class="w-full border-2 p-3 rounded-lg focus:border-emerald-500 outline-none">
-      </div>
-      <div>
-        <label class="block text-sm font-medium mb-1">Login (para entrar) *</label>
-        <input id="fLogin" type="text" value="${c?.login || ''}" autocapitalize="none"
-               class="w-full border-2 p-3 rounded-lg focus:border-emerald-500 outline-none"
-               placeholder="ex: maria">
-        <p class="text-xs text-gray-500 mt-1">Só letras minúsculas e números, sem espaço</p>
-      </div>
-      ${!editando ? `
-        <div>
-          <label class="block text-sm font-medium mb-1">Senha *</label>
-          <input id="fSenha" type="text" value="1234"
-                 class="w-full border-2 p-3 rounded-lg focus:border-emerald-500 outline-none">
-          <p class="text-xs text-gray-500 mt-1">Anote e entregue para a costureira</p>
-        </div>
-      ` : ''}
-      <div>
-        <label class="block text-sm font-medium mb-1">CPF (opcional)</label>
-        <input id="fCpf" type="text" value="${c?.cpf || ''}"
-               class="w-full border-2 p-3 rounded-lg focus:border-emerald-500 outline-none">
-      </div>
-      <div>
-        <label class="block text-sm font-medium mb-1">Salário base (R$)</label>
-        <input id="fSalario" type="number" step="0.01" value="${c?.salario_base || 1800}"
-               class="w-full border-2 p-3 rounded-lg focus:border-emerald-500 outline-none">
-      </div>
-      <button onclick="salvarCostureira(${c?.id_usuario || 'null'})"
-              class="btn-grande w-full bg-emerald-600 text-white rounded-lg hover:bg-emerald-700">
-        💾 Salvar
-      </button>
-    </div>
-  `);
-}
-
-function editarCostureira(c) {
-  abrirFormCostureira(c);
-}
-
-async function salvarCostureira(id) {
-  const nome = $('fNome').value.trim();
-  const login = $('fLogin').value.trim().toLowerCase();
-  const cpf = $('fCpf').value.trim();
-  const salario = parseFloat($('fSalario').value) || 0;
-  const senha = $('fSenha')?.value || '';
-
-  if (!nome || !login) { toast('⚠️ Preencha nome e login', 'erro'); return; }
-  if (!/^[a-z0-9.]+$/.test(login)) { toast('⚠️ Login inválido (só letras minúsculas, números e ponto)', 'erro'); return; }
-  if (!id && !senha) { toast('⚠️ Informe a senha', 'erro'); return; }
-
-  mostrarLoading(true);
-
-  try {
-    const params = {
-      action: 'salvarCostureira',
-      id_empresa: usuarioLogado.id_empresa,
-      nome, login, cpf,
-      salario_base: salario
-    };
-    if (id) params.id_usuario = id;
-    if (senha) params.senha = senha;
-
-    await apiPost(params);
-
-    setTimeout(() => {
-      mostrarLoading(false);
-      toast(id ? '✅ Costureira atualizada' : '✅ Costureira cadastrada', 'ok');
-      fecharModal();
-      render_costureiras();
-    }, 1500);
-  } catch (e) {
-    mostrarLoading(false);
-    toast('❌ Erro ao salvar', 'erro');
-  }
-}
-
-async function confirmarExcluirCostureira(id, nome) {
-  if (!confirm(`Excluir "${nome}"?\\n\\nOs lançamentos dela NÃO serão apagados.`)) return;
-  try {
-    await apiPost({ action: 'deletarCostureira', id_usuario: id });
-    setTimeout(() => {
-      toast('🗑️ Costureira excluída', 'ok');
-      render_costureiras();
-    }, 1500);
-  } catch (e) {
-    toast('❌ Erro', 'erro');
-  }
-}
-
-// ============================================
-// ABA: LANÇAMENTOS (Dono)
-// ============================================
-async function render_lancamentos() {
-  try {
-    const registros = await apiGet('listarRegistros', {
-      id_empresa: usuarioLogado.id_empresa,
-      mes: mesSelecionado
-    });
-
-    const costureiras = await apiGet('listarCostureiras', { id_empresa: usuarioLogado.id_empresa });
-    const mapaNome = {};
-    costureiras.forEach(c => mapaNome[c.id_usuario] = c.nome);
-
-    const ordenados = registros.slice().sort((a,b) => b.data.localeCompare(a.data));
-
-    $('conteudo').innerHTML = `
-      <div class="space-y-4">
-        <div class="card">
-          <div class="flex justify-between items-center mb-3">
-            <h2 class="text-xl font-bold text-emerald-700">📋 Lançamentos</h2>
-            <input type="month" value="${mesSelecionado}"
-                   onchange="mudarMes(this.value)"
-                   class="border p-2 rounded-lg text-sm">
-          </div>
-          <p class="text-sm text-gray-500">Total no mês: ${registros.length} lançamento(s)</p>
-        </div>
-
-        <div class="card">
-          <div class="space-y-2">
-            ${ordenados.length ? ordenados.map(r => `
-              <div class="flex justify-between items-center p-3 bg-gray-50 rounded-lg">
-                <div class="flex-1 min-w-0">
-                  <div class="font-semibold truncate">${mapaNome[r.id_usuario] || 'Costureira'}</div>
-                  <div class="text-xs text-gray-500">${fmtData(r.data)}</div>
-                </div>
-                <div class="font-bold text-emerald-700 mr-2">${r.minutos} min</div>
-                <button onclick="confirmarExcluir(${r.id_registro})"
-                        class="text-red-500 px-2">🗑️</button>
-              </div>
-            `).join('') : '<div class="text-center text-gray-400 py-6">Nenhum lançamento no mês</div>'}
-          </div>
-        </div>
-      </div>
-    `;
-  } catch (e) {
-    console.error(e);
-    $('conteudo').innerHTML = '<div class="card text-red-600">❌ Erro ao carregar</div>';
-  }
-}
-
-// ============================================
-// ABA: CONFIG EMPRESA (Dono)
-// ============================================
-async function render_configEmpresa() {
-  try {
-    const emp = empresaConfig || await apiGet('configEmpresa', { id_empresa: usuarioLogado.id_empresa });
-
-    $('conteudo').innerHTML = `
-      <div class="space-y-4">
-        <div class="card space-y-3">
-          <h2 class="text-xl font-bold text-emerald-700 mb-2">⚙️ Configurações da Confecção</h2>
-
-          <div>
-            <label class="block text-sm font-medium mb-1">🏢 Nome da confecção</label>
-            <input id="cfgNome" type="text" value="${emp.nome_confeccao}"
-                   class="w-full border-2 p-3 rounded-lg focus:border-emerald-500 outline-none">
-          </div>
-
-          <div>
-            <label class="block text-sm font-medium mb-1">📍 Endereço</label>
-            <input id="cfgEndereco" type="text" value="${emp.endereco || ''}"
-                   class="w-full border-2 p-3 rounded-lg focus:border-emerald-500 outline-none">
-          </div>
-
-          <hr class="my-2">
-
-          <h3 class="font-bold text-gray-700">💰 Regras de Premiação</h3>
-
-          <div class="grid grid-cols-2 gap-3">
-            <div>
-              <label class="block text-sm font-medium mb-1">⏱️ Minutos/dia</label>
-              <input id="cfgMinutos" type="number" value="${emp.minutos_padrao}"
-                     class="w-full border-2 p-3 rounded-lg focus:border-emerald-500 outline-none text-lg font-bold text-center">
-              <p class="text-xs text-gray-500 mt-1 text-center">Padrão = 100%</p>
-            </div>
-            <div>
-              <label class="block text-sm font-medium mb-1">🎯 Meta (%)</label>
-              <input id="cfgMeta" type="number" value="${emp.meta_piso}"
-                     class="w-full border-2 p-3 rounded-lg focus:border-emerald-500 outline-none text-lg font-bold text-center">
-              <p class="text-xs text-gray-500 mt-1 text-center">Para ganhar prêmio</p>
-            </div>
-            <div>
-              <label class="block text-sm font-medium mb-1">🎁 Prêmio base</label>
-              <input id="cfgPremio" type="number" step="0.01" value="${emp.valor_premio_base}"
-                     class="w-full border-2 p-3 rounded-lg focus:border-emerald-500 outline-none text-lg font-bold text-center">
-              <p class="text-xs text-gray-500 mt-1 text-center">Ao bater a meta</p>
-            </div>
-            <div>
-              <label class="block text-sm font-medium mb-1">📈 Valor por %</label>
-              <input id="cfgExtra" type="number" step="0.01" value="${emp.valor_por_extra}"
-                     class="w-full border-2 p-3 rounded-lg focus:border-emerald-500 outline-none text-lg font-bold text-center">
-              <p class="text-xs text-gray-500 mt-1 text-center">Cada 1% acima</p>
-            </div>
-          </div>
-
-          <div class="bg-emerald-50 p-3 rounded-lg text-xs text-emerald-800 mt-2">
-            💡 <strong>Exemplo:</strong> Se a costureira fizer <strong>${emp.meta_piso}%</strong> ou mais, ganha
-            <strong>${fmt(emp.valor_premio_base)}</strong>. Cada 1% acima disso vale <strong>${fmt(emp.valor_por_extra)}</strong>.
-          </div>
-
-          <button onclick="salvarConfig()"
-                  class="btn-grande w-full bg-emerald-600 text-white rounded-lg hover:bg-emerald-700 mt-2">
-            💾 SALVAR CONFIGURAÇÕES
-          </button>
-        </div>
-
-        <div class="card text-xs text-gray-500 space-y-1">
-          <div class="flex justify-between">
-            <span>📦 Plano:</span>
-            <span class="font-bold text-gray-700">${emp.id_plano === 1 ? 'Trial (grátis)' : 'Pago'}</span>
-          </div>
-          <div class="flex justify-between">
-            <span>📅 Vencimento:</span>
-            <span class="font-bold text-gray-700">${fmtData(emp.data_vencimento)}</span>
-          </div>
-          <div class="flex justify-between">
-            <span>✅ Status:</span>
-            <span class="font-bold text-emerald-600">${emp.status_assinatura}</span>
-          </div>
-        </div>
-      </div>
-    `;
-  } catch (e) {
-    console.error(e);
-    $('conteudo').innerHTML = '<div class="card text-red-600">❌ Erro ao carregar</div>';
-  }
+    config = await apiGet('config');
+    document.getElementById('cfgTaxa').value = config.TaxaPadrao || 1.5;
+    document.getElementById('cfgCadastro').value = config.TaxaCadastro || 800;
+    document.getElementById('cfgPrazo').value = config.PrazoPadrao || 48;
+    await carregarVeiculos();
+  } catch (e) { console.error(e); }
 }
 
 async function salvarConfig() {
   const params = {
-    action: 'salvarEmpresa',
-    id_empresa: usuarioLogado.id_empresa,
-    nome_confeccao: $('cfgNome').value.trim(),
-    endereco: $('cfgEndereco').value.trim(),
-    minutos_padrao: parseInt($('cfgMinutos').value),
-    meta_piso: parseFloat($('cfgMeta').value),
-    valor_premio_base: parseFloat($('cfgPremio').value),
-    valor_por_extra: parseFloat($('cfgExtra').value)
+    action: 'config',
+    taxaPadrao: document.getElementById('cfgTaxa').value,
+    taxaCadastro: document.getElementById('cfgCadastro').value,
+    prazoPadrao: document.getElementById('cfgPrazo').value
   };
+  await apiPost(params);
+  setTimeout(() => {
+    alert('Configurações salvas!');
+    carregarConfig();
+  }, 1500);
+}
 
-  if (!params.nome_confeccao || !params.minutos_padrao || !params.meta_piso) {
-    toast('⚠️ Preencha os campos obrigatórios', 'erro');
-    return;
-  }
+// ==========================================
+// PDF e Compartilhar
+// ==========================================
+function gerarPDF() {
+  if (!ultimoResultado) return;
+  const { jsPDF } = window.jspdf;
+  const doc = new jsPDF();
+  const r = ultimoResultado;
 
-  mostrarLoading(true);
+  doc.setFontSize(18);
+  doc.text('Simulacao de Financiamento', 14, 20);
+  doc.setFontSize(11);
+  doc.text(`Data: ${new Date().toLocaleDateString('pt-BR')}`, 14, 28);
+
+  doc.setFontSize(14);
+  doc.text(r.veiculo || 'Veiculo', 14, 40);
+
+  doc.setFontSize(11);
+  let y = 50;
+  const linhas = [
+    ['Preco do veiculo', fmt(r.preco)],
+    ['Entrada', fmt(r.entrada)],
+    ['Troca', fmt(r.troca)],
+    ['Valor financiado', fmt(r.financiado)],
+    ['Taxa mensal', r.taxa.toFixed(2) + '%'],
+    ['Parcelas', r.parcelas + 'x'],
+    ['Valor da parcela', fmt(r.parcela)],
+    ['Total pago', fmt(r.total)],
+    ['Juros totais', fmt(r.juros)],
+    ['Despesas', fmt(r.despesas)],
+    ['CET', r.cet.toFixed(4) + 'x'],
+    ['Custo final', fmt(r.custoFinal)]
+  ];
+
+  linhas.forEach(([k, v]) => {
+    doc.text(k + ':', 14, y);
+    doc.text(v, 100, y);
+    y += 8;
+  });
+
+  doc.save(`financiamento-${Date.now()}.pdf`);
+}
+
+function compartilhar() {
+  if (!ultimoResultado) return;
+  const r = ultimoResultado;
+  const texto = `🚗 Simulação de Financiamento\n\n` +
+    `Veículo: ${r.veiculo || '-'}\n` +
+    `Preço: ${fmt(r.preco)}\n` +
+    `Entrada: ${fmt(r.entrada)}\n` +
+    `Troca: ${fmt(r.troca)}\n` +
+    `Financiado: ${fmt(r.financiado)}\n` +
+    `Taxa: ${r.taxa.toFixed(2)}% a.m.\n` +
+    `Parcelas: ${r.parcelas}x de ${fmt(r.parcela)}\n` +
+    `Total: ${fmt(r.total)}\n` +
+    `Juros: ${fmt(r.juros)}\n` +
+    `Custo final: ${fmt(r.custoFinal)}`;
+
+  const url = 'https://wa.me/?text=' + encodeURIComponent(texto);
+  window.open(url, '_blank');
+}
+
+// ==========================================
+// INIT
+// ==========================================
+async function init() {
+  setStatus('⏳ Carregando...', 'text-yellow-200 text-xs mt-2');
   try {
-    await apiPost(params);
-    setTimeout(async () => {
-      mostrarLoading(false);
-      toast('✅ Configurações salvas!', 'ok');
-      // Recarrega config
-      empresaConfig = await apiGet('configEmpresa', { id_empresa: usuarioLogado.id_empresa });
-      $('hdrEmpresa').textContent = empresaConfig.nome_confeccao;
-    }, 1500);
+    config = await apiGet('config');
+    document.getElementById('taxa').value = config.TaxaPadrao || 1.5;
+    document.getElementById('despesas').value = config.TaxaCadastro || 800;
+    document.getElementById('parcelas').value = config.PrazoPadrao || 48;
+
+    await carregarVeiculos();
+    await carregarSimulacoes();
+
+    setStatus('✅ Pronto!', 'text-green-200 text-xs mt-2');
   } catch (e) {
-    mostrarLoading(false);
-    toast('❌ Erro ao salvar', 'erro');
+    console.error(e);
+    setStatus('❌ Erro ao carregar', 'text-red-200 text-xs mt-2');
   }
+}
+
+init();
+
+// Registra service worker (PWA)
+if ('serviceWorker' in navigator) {
+  navigator.serviceWorker.register('sw.js').catch(() => {});
 }
 </script>
 
-<script>
-// ============================================
-// ABA: SUPER EMPRESAS (Super Admin)
-// ============================================
-async function render_superEmpresas() {
-  try {
-    const dados = await apiGet('painelSuper');
-
-    if (dados.error) {
-      $('conteudo').innerHTML = '<div class="card text-red-600">❌ ' + dados.error + '</div>';
-      return;
-    }
-
-    $('conteudo').innerHTML = `
-      <div class="space-y-4">
-        <div class="card">
-          <div class="flex justify-between items-center mb-3">
-            <h2 class="text-xl font-bold text-emerald-700">🏢 Confecções</h2>
-            <button onclick="abrirFormEmpresa()"
-                    class="bg-emerald-600 text-white px-4 py-2 rounded-lg font-semibold hover:bg-emerald-700">
-              + Nova
-            </button>
-          </div>
-          <p class="text-sm text-gray-500">Total: ${dados.total_empresas} confecção(ões)</p>
-        </div>
-
-        ${dados.empresas.map(e => {
-          const statusCor = e.status === 'ATIVA' ? 'bg-emerald-100 text-emerald-700'
-            : e.status === 'TRIAL' ? 'bg-blue-100 text-blue-700'
-            : e.status === 'VENCIDA' ? 'bg-red-100 text-red-700'
-            : 'bg-gray-100 text-gray-700';
-          return `
-            <div class="card">
-              <div class="flex justify-between items-start mb-2">
-                <div class="flex-1 min-w-0">
-                  <h3 class="font-bold text-lg truncate">${e.nome}</h3>
-                  <div class="flex gap-2 mt-1">
-                    <span class="${statusCor} px-2 py-0.5 rounded-full text-xs font-bold">${e.status}</span>
-                    <span class="bg-purple-100 text-purple-700 px-2 py-0.5 rounded-full text-xs font-bold">
-                      ${e.plano}
-                    </span>
-                  </div>
-                </div>
-                <button onclick='abrirFormPlano(${JSON.stringify(e).replace(/'/g, "&apos;")})'
-                        class="text-blue-500 px-2 text-xl">⚙️</button>
-              </div>
-
-              <div class="grid grid-cols-3 gap-2 text-xs mt-3">
-                <div class="bg-gray-50 p-2 rounded-lg text-center">
-                  <div class="text-gray-500">Costureiras</div>
-                  <div class="font-bold">${e.qtd_costureiras}/${e.max_costureiras}</div>
-                </div>
-                <div class="bg-gray-50 p-2 rounded-lg text-center">
-                  <div class="text-gray-500">Mensalidade</div>
-                  <div class="font-bold">${fmt(e.preco)}</div>
-                </div>
-                <div class="bg-gray-50 p-2 rounded-lg text-center">
-                  <div class="text-gray-500">Vence</div>
-                  <div class="font-bold">${fmtData(e.vencimento)}</div>
-                </div>
-              </div>
-            </div>
-          `;
-        }).join('')}
-      </div>
-    `;
-  } catch (e) {
-    console.error(e);
-    $('conteudo').innerHTML = '<div class="card text-red-600">❌ Erro ao carregar</div>';
-  }
-}
-
-function abrirFormEmpresa() {
-  abrirModal('➕ Nova Confecção', `
-    <div class="space-y-3">
-      <div>
-        <label class="block text-sm font-medium mb-1">🏢 Nome da confecção *</label>
-        <input id="eNome" type="text" class="w-full border-2 p-3 rounded-lg focus:border-emerald-500 outline-none">
-      </div>
-      <div>
-        <label class="block text-sm font-medium mb-1">📍 Endereço</label>
-        <input id="eEndereco" type="text" class="w-full border-2 p-3 rounded-lg focus:border-emerald-500 outline-none">
-      </div>
-      <div>
-        <label class="block text-sm font-medium mb-1">📦 Plano *</label>
-        <select id="ePlano" class="w-full border-2 p-3 rounded-lg focus:border-emerald-500 outline-none">
-          <option value="1">Trial (3 costureiras) - Grátis</option>
-          <option value="2">Básico (5 costureiras) - R$ 49,90</option>
-          <option value="3">Padrão (15 costureiras) - R$ 99,90</option>
-          <option value="4">Pro (30 costureiras) - R$ 179,90</option>
-          <option value="5">Enterprise (ilimitado) - R$ 299,90</option>
-        </select>
-      </div>
-
-      <hr class="my-2">
-      <h4 class="font-bold text-gray-700">👤 Dados do Dono</h4>
-
-      <div>
-        <label class="block text-sm font-medium mb-1">Nome completo *</label>
-        <input id="eDonoNome" type="text" class="w-full border-2 p-3 rounded-lg focus:border-emerald-500 outline-none">
-      </div>
-      <div>
-        <label class="block text-sm font-medium mb-1">Login do dono *</label>
-        <input id="eDonoLogin" type="text" autocapitalize="none"
-               class="w-full border-2 p-3 rounded-lg focus:border-emerald-500 outline-none"
-               placeholder="ex: joao">
-      </div>
-      <div>
-        <label class="block text-sm font-medium mb-1">Senha *</label>
-        <input id="eDonoSenha" type="text" value="dono123"
-               class="w-full border-2 p-3 rounded-lg focus:border-emerald-500 outline-none">
-      </div>
-      <div>
-        <label class="block text-sm font-medium mb-1">CPF do dono (opcional)</label>
-        <input id="eDonoCpf" type="text" class="w-full border-2 p-3 rounded-lg focus:border-emerald-500 outline-none">
-      </div>
-
-      <button onclick="salvarNovaEmpresa()"
-              class="btn-grande w-full bg-emerald-600 text-white rounded-lg hover:bg-emerald-700">
-        💾 Criar Confecção + Dono
-      </button>
-    </div>
-  `);
-}
-
-async function salvarNovaEmpresa() {
-  const params = {
-    action: 'criarEmpresa',
-    nome_confeccao: $('eNome').value.trim(),
-    endereco: $('eEndereco').value.trim(),
-    id_plano: $('ePlano').value,
-    nome_dono: $('eDonoNome').value.trim(),
-    login_dono: $('eDonoLogin').value.trim().toLowerCase(),
-    senha_dono: $('eDonoSenha').value,
-    cpf_dono: $('eDonoCpf').value.trim()
-  };
-
-  if (!params.nome_confeccao || !params.nome_dono || !params.login_dono) {
-    toast('⚠️ Preencha os campos obrigatórios', 'erro');
-    return;
-  }
-  if (!/^[a-z0-9.]+$/.test(params.login_dono)) {
-    toast('⚠️ Login inválido', 'erro');
-    return;
-  }
-
-  mostrarLoading(true);
-  try {
-    await apiPost(params);
-    setTimeout(() => {
-      mostrarLoading(false);
-      toast('✅ Confecção criada!', 'ok');
-      fecharModal();
-      render_superEmpresas();
-    }, 1500);
-  } catch (e) {
-    mostrarLoading(false);
-    toast('❌ Erro ao criar', 'erro');
-  }
-}
-
-function abrirFormPlano(emp) {
-  abrirModal('⚙️ Gerenciar Confecção', `
-    <div class="space-y-3">
-      <div class="bg-emerald-50 p-3 rounded-lg text-sm">
-        <div class="font-bold">${emp.nome}</div>
-        <div class="text-xs text-gray-600 mt-1">
-          ${emp.qtd_costureiras} costureira(s) · ${fmt(emp.preco)}/mês
-        </div>
-      </div>
-
-      <div>
-        <label class="block text-sm font-medium mb-1">📦 Plano</label>
-        <select id="pPlano" class="w-full border-2 p-3 rounded-lg focus:border-emerald-500 outline-none">
-          <option value="1" ${emp.plano_id == 1 ? 'selected' : ''}>Trial - Grátis</option>
-          <option value="2" ${emp.plano_id == 2 ? 'selected' : ''}>Básico - R$ 49,90</option>
-          <option value="3" ${emp.plano_id == 3 ? 'selected' : ''}>Padrão - R$ 99,90</option>
-          <option value="4" ${emp.plano_id == 4 ? 'selected' : ''}>Pro - R$ 179,90</option>
-          <option value="5" ${emp.plano_id == 5 ? 'selected' : ''}>Enterprise - R$ 299,90</option>
-        </select>
-      </div>
-
-      <div>
-        <label class="block text-sm font-medium mb-1">📊 Status</label>
-        <select id="pStatus" class="w-full border-2 p-3 rounded-lg focus:border-emerald-500 outline-none">
-          <option value="TRIAL" ${emp.status === 'TRIAL' ? 'selected' : ''}>Trial</option>
-          <option value="ATIVA" ${emp.status === 'ATIVA' ? 'selected' : ''}>Ativa</option>
-          <option value="VENCIDA" ${emp.status === 'VENCIDA' ? 'selected' : ''}>Vencida (bloqueia)</option>
-          <option value="CANCELADA" ${emp.status === 'CANCELADA' ? 'selected' : ''}>Cancelada</option>
-        </select>
-      </div>
-
-      <div>
-        <label class="block text-sm font-medium mb-1">📅 Vencimento</label>
-        <input id="pVencimento" type="date" value="${(emp.vencimento || '').slice(0,10)}"
-               class="w-full border-2 p-3 rounded-lg focus:border-emerald-500 outline-none">
-      </div>
-
-      <button onclick="salvarPlano(${emp.id_empresa})"
-              class="btn-grande w-full bg-emerald-600 text-white rounded-lg hover:bg-emerald-700">
-        💾 Salvar
-      </button>
-    </div>
-  `);
-}
-
-async function salvarPlano(id) {
-  const params = {
-    action: 'mudarPlano',
-    id_empresa: id,
-    id_plano: $('pPlano').value,
-    status_assinatura: $('pStatus').value,
-    data_vencimento: $('pVencimento').value
-  };
-
-  mostrarLoading(true);
-  try {
-    await apiPost(params);
-    setTimeout(() => {
-      mostrarLoading(false);
-      toast('✅ Atualizado!', 'ok');
-      fecharModal();
-      render_superEmpresas();
-    }, 1500);
-  } catch (e) {
-    mostrarLoading(false);
-    toast('❌ Erro', 'erro');
-  }
-}
-
-// ============================================
-// ABA: SUPER PAINEL (Super Admin)
-// ============================================
-async function render_superPainel() {
-  try {
-    const dados = await apiGet('painelSuper');
-
-    const trial = dados.empresas.filter(e => e.status === 'TRIAL').length;
-    const ativas = dados.empresas.filter(e => e.status === 'ATIVA').length;
-    const vencidas = dados.empresas.filter(e => e.status === 'VENCIDA').length;
-    const totalCostureiras = dados.empresas.reduce((s, e) => s + e.qtd_costureiras, 0);
-
-    $('conteudo').innerHTML = `
-      <div class="space-y-4">
-        <div class="card">
-          <h2 class="text-xl font-bold text-emerald-700 mb-4">🌐 Painel Global</h2>
-
-          <div class="grid grid-cols-2 gap-3">
-            <div class="bg-gradient-to-br from-emerald-500 to-teal-600 text-white p-4 rounded-xl">
-              <div class="text-xs opacity-90">💰 MRR (Receita Mensal)</div>
-              <div class="text-3xl font-bold mt-1">${fmt(dados.mrr)}</div>
-            </div>
-            <div class="bg-gradient-to-br from-purple-500 to-indigo-600 text-white p-4 rounded-xl">
-              <div class="text-xs opacity-90">🏢 Confecções</div>
-              <div class="text-3xl font-bold mt-1">${dados.total_empresas}</div>
-            </div>
-          </div>
-
-          <div class="grid grid-cols-3 gap-2 mt-3 text-center text-xs">
-            <div class="bg-blue-50 p-3 rounded-xl">
-              <div class="text-blue-700 font-medium">Trial</div>
-              <div class="text-xl font-bold text-blue-900">${trial}</div>
-            </div>
-            <div class="bg-emerald-50 p-3 rounded-xl">
-              <div class="text-emerald-700 font-medium">Ativas</div>
-              <div class="text-xl font-bold text-emerald-900">${ativas}</div>
-            </div>
-            <div class="bg-red-50 p-3 rounded-xl">
-              <div class="text-red-700 font-medium">Vencidas</div>
-              <div class="text-xl font-bold text-red-900">${vencidas}</div>
-            </div>
-          </div>
-        </div>
-
-        <div class="card">
-          <h3 class="font-semibold mb-3">📊 Estatísticas</h3>
-          <div class="space-y-2 text-sm">
-            <div class="flex justify-between py-2 border-b">
-              <span class="text-gray-600">👥 Total de usuários</span>
-              <span class="font-bold">${dados.total_usuarios}</span>
-            </div>
-            <div class="flex justify-between py-2 border-b">
-              <span class="text-gray-600">🧵 Total de costureiras</span>
-              <span class="font-bold">${totalCostureiras}</span>
-            </div>
-            <div class="flex justify-between py-2">
-              <span class="text-gray-600">📝 Total de registros</span>
-              <span class="font-bold">${dados.total_registros}</span>
-            </div>
-          </div>
-        </div>
-
-        <div class="card">
-          <h3 class="font-semibold mb-3">📈 Confecções por Plano</h3>
-          <canvas id="graficoSuper" height="180"></canvas>
-        </div>
-
-        <div class="card text-xs text-gray-500 text-center">
-          ConfecFlow MVP v1.0<br>
-          © Walney Moreira Klein · walneyk@hotmail.com
-        </div>
-      </div>
-    `;
-
-    // Gráfico
-    setTimeout(() => {
-      const canvas = $('graficoSuper');
-      if (!canvas) return;
-      if (charts.super) charts.super.destroy();
-
-      const planos = {};
-      dados.empresas.forEach(e => {
-        planos[e.plano] = (planos[e.plano] || 0) + 1;
-      });
-
-      charts.super = new Chart(canvas, {
-        type: 'doughnut',
-        data: {
-          labels: Object.keys(planos),
-          datasets: [{
-            data: Object.values(planos),
-            backgroundColor: ['#3b82f6', '#10b981', '#f59e0b', '#8b5cf6', '#ef4444']
-          }]
-        },
-        options: {
-          responsive: true,
-          plugins: { legend: { position: 'bottom' } }
-        }
-      });
-    }, 100);
-
-  } catch (e) {
-    console.error(e);
-    $('conteudo').innerHTML = '<div class="card text-red-600">❌ Erro ao carregar</div>';
-  }
-}
-</script>
-
+</body>
+</html>
