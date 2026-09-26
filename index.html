@@ -435,19 +435,35 @@ async function carregarUltimosLancamentos() {
     const registros = await apiGet('listarRegistros', { id_usuario: usuarioLogado.id_usuario });
     const ultimos = registros.slice().sort((a,b) => b.data.localeCompare(a.data)).slice(0, 5);
     const el = $('ultimosLancamentos');
+    const metaPadrao = (empresaConfig && empresaConfig.minutos_padrao) || 555;
+    const metaPiso = (empresaConfig && empresaConfig.meta_piso) || 70;
+
     if (!ultimos.length) {
       el.innerHTML = '<div class="text-center text-gray-400 py-4">Nenhum lançamento ainda</div>';
       return;
     }
-    el.innerHTML = ultimos.map(r => `
-      <div class="flex justify-between items-center bg-gray-50 p-3 rounded-lg">
-        <span class="font-medium">${fmtData(r.data)}</span>
-        <span class="font-bold text-emerald-700">${r.minutos} min</span>
-      </div>
-    `).join('');
+
+    el.innerHTML = ultimos.map(r => {
+      const efic = (r.minutos / metaPadrao) * 100;
+      const bateu = efic >= metaPiso;
+      const cor = bateu ? 'text-emerald-700' : 'text-orange-600';
+      const bg = bateu ? 'bg-emerald-50 border-emerald-200' : 'bg-orange-50 border-orange-200';
+      const icone = bateu ? '🏆' : '💪';
+      return `
+        <div class="flex justify-between items-center p-3 rounded-lg border-2 ${bg}">
+          <div class="flex-1">
+            <div class="font-medium">${fmtData(r.data)}</div>
+            <div class="text-xs text-gray-500 font-mono">${r.minutos} ÷ ${metaPadrao} × 100</div>
+          </div>
+          <div class="text-right">
+            <div class="font-bold ${cor} text-lg">${efic.toFixed(1)}%</div>
+            <div class="text-xs text-gray-500">${icone}</div>
+          </div>
+        </div>
+      `;
+    }).join('');
   } catch (e) { console.error(e); }
 }
-
 async function salvarLancamento() {
   const data = $('lancData').value;
   const minutos = parseInt($('lancMinutos').value);
@@ -505,6 +521,7 @@ async function render_meusNumeros() {
 
     const eficiencia = dados.eficiencia || 0;
     const meta = (empresaConfig && empresaConfig.meta_piso) || 70;
+    const metaPadrao = dados.minutos_padrao || (empresaConfig && empresaConfig.minutos_padrao) || 555;
     const corEficiencia = eficiencia >= meta ? 'text-emerald-600' : 'text-gray-500';
     const emoji = eficiencia >= meta ? '🏆' : '💪';
 
@@ -545,23 +562,21 @@ async function render_meusNumeros() {
             </div>
           </div>
 
-          <!-- EFICIÊNCIA MÉDIA (por dia) -->
           <div class="bg-gradient-to-br from-emerald-50 to-teal-50 p-4 rounded-xl text-center mb-3">
             <div class="text-xs text-gray-600 font-medium mb-1">📈 Eficiência (média por dia)</div>
             <div class="text-5xl font-bold ${corEficiencia}">${eficiencia.toFixed(1)}%</div>
             <div class="text-xs text-gray-500 mt-2 bg-white/60 rounded-lg py-1 px-2 inline-block font-mono">
-              ${dados.dias_registrados > 0 
-                ? `(${dados.total_minutos} ÷ ${dados.dias_registrados} dias) ÷ ${dados.minutos_padrao} × 100`
+              ${dados.dias_registrados > 0
+                ? `(${dados.total_minutos} ÷ ${dados.dias_registrados} dias) ÷ ${metaPadrao} × 100`
                 : 'Sem lançamentos ainda'}
             </div>
             <div class="text-xs text-gray-500 mt-2">${emoji} Meta: ${meta}%</div>
           </div>
 
-          <!-- EFICIÊNCIA DO MÊS -->
           <div class="bg-gray-50 p-3 rounded-xl text-center">
             <div class="text-xs text-gray-600 mb-1">📅 Eficiência do mês (base 22 dias úteis)</div>
             <div class="text-2xl font-bold text-gray-700">${(dados.eficiencia_mes || 0).toFixed(1)}%</div>
-            <div class="text-xs text-gray-500 mt-1">${dados.total_minutos} ÷ (${dados.minutos_padrao} × 22) × 100</div>
+            <div class="text-xs text-gray-500 mt-1">${dados.total_minutos} ÷ (${metaPadrao} × 22) × 100</div>
           </div>
         </div>
 
@@ -576,32 +591,51 @@ async function render_meusNumeros() {
         </div>
       </div>
     `;
+
     setTimeout(() => desenharGraficoEvolucao(dados.registros || []), 100);
 
+    // ============================================
+    // LISTA DE REGISTROS COM EFICIÊNCIA POR DIA
+    // ============================================
     const lista = $('listaRegistrosMes');
+    const metaPiso = meta;
+
     if (!dados.registros || !dados.registros.length) {
       lista.innerHTML = '<div class="text-center text-gray-400 py-4">Nenhum registro no mês</div>';
     } else {
       lista.innerHTML = dados.registros
         .slice()
-        .sort((a,b) => a.data.localeCompare(b.data))
-        .map(r => `
-          <div class="flex justify-between items-center bg-gray-50 p-3 rounded-lg">
-            <span class="font-medium">${fmtData(r.data)}</span>
-            <div class="flex items-center gap-2">
-              <span class="font-bold text-emerald-700">${r.minutos} min</span>
+        .sort((a, b) => b.data.localeCompare(a.data))
+        .map(r => {
+          const efic = (r.minutos / metaPadrao) * 100;
+          const bateu = efic >= metaPiso;
+          const cor = bateu ? 'text-emerald-700' : 'text-orange-600';
+          const bg = bateu ? 'bg-emerald-50 border-emerald-200' : 'bg-orange-50 border-orange-200';
+          const icone = bateu ? '🏆' : '💪';
+          return `
+            <div class="flex justify-between items-center p-3 rounded-lg border-2 ${bg}">
+              <div class="flex-1 min-w-0">
+                <div class="font-medium">${fmtData(r.data)}</div>
+                <div class="text-xs text-gray-500 mt-0.5 font-mono">
+                  ${r.minutos} ÷ ${metaPadrao} × 100
+                </div>
+              </div>
+              <div class="text-right mr-2">
+                <div class="font-bold ${cor} text-lg">${efic.toFixed(1)}%</div>
+                <div class="text-xs text-gray-500">${icone} ${bateu ? 'Bateu meta' : 'Abaixo'}</div>
+              </div>
               <button onclick="confirmarExcluir(${r.id_registro})"
-                      class="text-red-500 hover:text-red-700 px-2">🗑️</button>
+                      class="text-red-500 hover:text-red-700 px-2 ml-1">🗑️</button>
             </div>
-          </div>
-        `).join('');
+          `;
+        }).join('');
     }
+
   } catch (e) {
     console.error(e);
     $('conteudo').innerHTML = '<div class="card text-red-600">❌ Erro ao carregar</div>';
   }
 }
-
 function mudarMes(mes) {
   mesSelecionado = mes;
   if (abaAtiva) trocarAba(abaAtiva);
@@ -664,6 +698,10 @@ async function render_historico() {
     const registros = await apiGet('listarRegistros', { id_usuario: usuarioLogado.id_usuario });
     const ordenados = registros.slice().sort((a,b) => b.data.localeCompare(a.data));
 
+    const metaPadrao = (empresaConfig && empresaConfig.minutos_padrao) || 555;
+    const metaPiso = (empresaConfig && empresaConfig.meta_piso) || 70;
+
+    // Agrupa por mês
     const porMes = {};
     ordenados.forEach(r => {
       const mes = r.data.slice(0,7);
@@ -683,21 +721,42 @@ async function render_historico() {
         ${meses.length ? meses.map(mes => {
           const regs = porMes[mes];
           const total = regs.reduce((s,r) => s + r.minutos, 0);
+          const dias = regs.length;
+          const mediaDia = dias > 0 ? total / dias : 0;
+          const eficMes = (mediaDia / metaPadrao) * 100;
+          const bateuMes = eficMes >= metaPiso;
           const [y, m] = mes.split('-');
           const nomeMes = new Date(y, m-1, 1).toLocaleDateString('pt-BR', { month: 'long', year: 'numeric' });
+
           return `
             <div class="card">
               <div class="flex justify-between items-center mb-3">
                 <h3 class="font-bold text-gray-700 capitalize">${nomeMes}</h3>
-                <span class="bg-emerald-100 text-emerald-700 px-3 py-1 rounded-full text-sm font-bold">${total} min</span>
+                <div class="text-right">
+                  <div class="bg-emerald-100 text-emerald-700 px-3 py-1 rounded-full text-sm font-bold inline-block">${total} min</div>
+                  <div class="text-xs text-gray-500 mt-1">${dias} dia(s) · média ${eficMes.toFixed(1)}% ${bateuMes ? '🏆' : ''}</div>
+                </div>
               </div>
-              <div class="space-y-1 text-sm">
-                ${regs.map(r => `
-                  <div class="flex justify-between py-1 border-b border-gray-100 last:border-0">
-                    <span>${fmtData(r.data)}</span>
-                    <span class="font-medium">${r.minutos} min</span>
-                  </div>
-                `).join('')}
+              <div class="space-y-2">
+                ${regs.map(r => {
+                  const efic = (r.minutos / metaPadrao) * 100;
+                  const bateu = efic >= metaPiso;
+                  const cor = bateu ? 'text-emerald-700' : 'text-orange-600';
+                  const bg = bateu ? 'bg-emerald-50' : 'bg-orange-50';
+                  const icone = bateu ? '🏆' : '💪';
+                  return `
+                    <div class="flex justify-between items-center p-3 rounded-lg ${bg}">
+                      <div class="flex-1">
+                        <div class="font-medium">${fmtData(r.data)}</div>
+                        <div class="text-xs text-gray-500 font-mono">${r.minutos} ÷ ${metaPadrao} × 100</div>
+                      </div>
+                      <div class="text-right">
+                        <div class="font-bold ${cor} text-lg">${efic.toFixed(1)}%</div>
+                        <div class="text-xs text-gray-500">${icone}</div>
+                      </div>
+                    </div>
+                  `;
+                }).join('')}
               </div>
             </div>
           `;
@@ -709,7 +768,6 @@ async function render_historico() {
     $('conteudo').innerHTML = '<div class="card text-red-600">❌ Erro ao carregar</div>';
   }
 }
-
 // ============================================
 // ABA: PAINEL DONO
 // ============================================
