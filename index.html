@@ -140,7 +140,7 @@
 // ============================================
 // CONFIGURAÇÃO
 // ============================================
-const API_URL = 'https://script.google.com/macros/s/AKfycbxXX_bVsKs5-qgKIGdY-ywZEPsIHf6Cj9BuzYSHHW6hVYI7RiPrc8p_-IXenATGXC2JuA/exec';
+const API_URL = 'https://script.google.com/macros/s/AKfycbyFpLlLzdGwoeK17yUzD7qRSulMoDGisAfgLS_O8jTWapW_ZThul0NlrVGrg_GSZqRvfA/exec';
 
 // ============================================
 // HELPERS
@@ -517,6 +517,7 @@ async function render_meusNumeros() {
                    onchange="mudarMes(this.value)"
                    class="border p-2 rounded-lg text-sm">
           </div>
+
           <div class="grid grid-cols-2 gap-3 mb-4">
             <div class="bg-emerald-50 p-4 rounded-xl text-center">
               <div class="text-xs text-emerald-700 font-medium">💰 Salário Base</div>
@@ -527,11 +528,13 @@ async function render_meusNumeros() {
               <div class="text-lg font-bold text-purple-900 mt-1">${fmt(dados.premio)}</div>
             </div>
           </div>
+
           <div class="bg-gradient-to-r from-emerald-600 to-teal-600 text-white p-4 rounded-xl text-center mb-4">
             <div class="text-xs opacity-90">Total a Receber no Mês</div>
             <div class="text-3xl font-bold mt-1">${fmt(dados.total_receber)}</div>
           </div>
-          <div class="grid grid-cols-2 gap-3">
+
+          <div class="grid grid-cols-2 gap-3 mb-4">
             <div class="bg-gray-50 p-3 rounded-xl text-center">
               <div class="text-xs text-gray-500">Minutos no mês</div>
               <div class="text-xl font-bold">${dados.total_minutos}</div>
@@ -541,23 +544,38 @@ async function render_meusNumeros() {
               <div class="text-xl font-bold">${dados.dias_registrados}</div>
             </div>
           </div>
-          <div class="mt-4 text-center">
-            <div class="text-xs text-gray-500 mb-1">Eficiência do mês</div>
+
+          <!-- EFICIÊNCIA MÉDIA (por dia) -->
+          <div class="bg-gradient-to-br from-emerald-50 to-teal-50 p-4 rounded-xl text-center mb-3">
+            <div class="text-xs text-gray-600 font-medium mb-1">📈 Eficiência (média por dia)</div>
             <div class="text-5xl font-bold ${corEficiencia}">${eficiencia.toFixed(1)}%</div>
-            <div class="text-xs text-gray-500 mt-1">${emoji} Meta: ${meta}%</div>
+            <div class="text-xs text-gray-500 mt-2 bg-white/60 rounded-lg py-1 px-2 inline-block font-mono">
+              ${dados.dias_registrados > 0 
+                ? `(${dados.total_minutos} ÷ ${dados.dias_registrados} dias) ÷ ${dados.minutos_padrao} × 100`
+                : 'Sem lançamentos ainda'}
+            </div>
+            <div class="text-xs text-gray-500 mt-2">${emoji} Meta: ${meta}%</div>
+          </div>
+
+          <!-- EFICIÊNCIA DO MÊS -->
+          <div class="bg-gray-50 p-3 rounded-xl text-center">
+            <div class="text-xs text-gray-600 mb-1">📅 Eficiência do mês (base 22 dias úteis)</div>
+            <div class="text-2xl font-bold text-gray-700">${(dados.eficiencia_mes || 0).toFixed(1)}%</div>
+            <div class="text-xs text-gray-500 mt-1">${dados.total_minutos} ÷ (${dados.minutos_padrao} × 22) × 100</div>
           </div>
         </div>
+
         <div class="card">
           <h3 class="font-semibold mb-3">📈 Evolução Diária</h3>
           <canvas id="graficoEvolucao" height="180"></canvas>
         </div>
+
         <div class="card">
           <h3 class="font-semibold mb-3">📋 Registros do mês</h3>
           <div id="listaRegistrosMes" class="space-y-2"></div>
         </div>
       </div>
     `;
-
     setTimeout(() => desenharGraficoEvolucao(dados.registros || []), 100);
 
     const lista = $('listaRegistrosMes');
